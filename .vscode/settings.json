@@ -1,0 +1,22 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/etl/.venv/Scripts/python.exe",
+  "python.formatting.provider": "black",
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": true,
+  "python.linting.flake8Enabled": false,
+  "python.testing.pytestEnabled": true,
+  "python.autoComplete.extraPaths": [
+    "${workspaceFolder}/etl/.venv/Lib/site-packages"
+  ],
+  "editor.formatOnSave": true,
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true
+  },
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/.venv/Lib/site-packages",
+    "${workspaceFolder}/etl/oedi_etl"
+  ],
+  "terminal.integrated.defaultProfile.windows": "Command Prompt",
+  "cSpell.words": ["comstock", "Ketchikan", "pyarrow"]
+}

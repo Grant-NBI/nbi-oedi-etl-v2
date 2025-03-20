@@ -1,0 +1,65 @@
+{
+  "monorepoRoot": ".",
+  "deploymentConfig": [
+    {
+      "appName": "NbiBuildingAnalytics",
+      "account": "653991346912",
+      "deploymentEnv": "dev",
+      "profile": "awsist-dev",
+      "regions": ["us-west-2"],
+      "requireApproval": "never",
+      "glueJobTimeoutMinutes": 240
+    }
+  ],
+  "etl_config": {
+    "glue_job_timeout": 14400,
+    "output_dir": "etl_output",
+    "src_bucket": "oedi-data-lake",
+    "data_partition_in_release": "timeseries_individual_buildings/by_state",
+    "base_partition": "nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock",
+    "job_specific": [
+      {
+        "metadata_root_dir": "oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_1/metadata_and_annual_results",
+        "relative_metadata_prefix_type": "1",
+        "release_name": "comstock_amy2018_release_1",
+        "release_year": "2024",
+        "state": "AK",
+        "upgrades": ["0"]
+      },
+      {
+        "metadata_root_dir": "oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_2/metadata_and_annual_results_aggregates",
+        "relative_metadata_prefix_type": "2",
+        "release_name": "comstock_amy2018_release_2",
+        "release_year": "2024",
+        "state": "AK",
+        "upgrades": ["1"]
+      },
+      {
+        "counties": ["G0200130", "G0200160", "G0200200"],
+        "metadata_root_dir": "oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_2/metadata_and_annual_results",
+        "relative_metadata_prefix_type": "2",
+        "release_name": "comstock_amy2018_release_2",
+        "release_year": "2024",
+        "state": "AK",
+        "upgrades": ["1"]
+      },
+      {
+        "counties": ["*"],
+        "metadata_root_dir": "oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_2/metadata_and_annual_results_aggregates",
+        "relative_metadata_prefix_type": "3",
+        "release_name": "comstock_amy2018_release_2",
+        "release_year": "2024",
+        "state": "AK",
+        "upgrades": ["1"]
+      }
+    ],
+    "settings": {
+      "log_dir": "logs",
+      "log_filename": "etl.log",
+      "logging_level": "DEBUG",
+      "idle_timeout_in_minutes": 5,
+      "listing_page_size": 100,
+      "max_listing_queue_size": 500
+    }
+  }
+}

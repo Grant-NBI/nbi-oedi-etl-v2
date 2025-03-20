@@ -1,0 +1,29 @@
+[tool.poetry]
+authors = ["nbi"]
+description = "etl energy usage data from the OEDI  dal to an S3 bucket."
+license = "MIT"
+name = "oedi_etl"
+packages = [{include = "oedi_etl"}]
+readme = "README.md"
+version = "0.1.0"
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core"]
+
+[tool.poetry.dependencies]
+boto3 = "^1.35.23" 
+pyarrow = "^17.0.0" 
+python = ">=3.9,<3.13" #on the job it will run as 3.9
+s3fs = "^2024.9.0" 
+structlog = "^24.4.0" 
+pyzmq = "^26.2.1"
+
+[tool.poetry.dev-dependencies]
+black = "^24.8.0"
+pytest = "^7.2.0"
+setuptools = "^75.1.0"
+
+[tool.poetry.scripts]
+test = "runner:run_test"
+wheel = "build_wheel:build"
