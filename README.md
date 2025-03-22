@@ -19,44 +19,36 @@ The deployment process is automated using AWS CDK.
 
 * *Note that this file is ignored by git ignore, and you need to create your own from the following example and save it to `config.json` at the root of the project workspace*.
 
----
-
 ### **Versions and Metadata Handling**
 
-This system supports two metadata versions:
+This system supports three metadata versions:
 
 * **Version `1.0` (Legacy)**
   * Uses **state-level** metadata exclusively.
   * Metadata is stored under `by_state/state={state}/parquet`.
   * Metadata filenames follow the format:
 
-    ```
-    {state}_{upgrade_str}_metadata_and_annual_results.parquet
-    ```
+    `{state}_{upgrade_str}_metadata_and_annual_results.parquet`
 
-* **Version `2.0` (Current System)**
-  * Supports **both** state and county-level metadata.
-  * **State-Level Metadata (No `counties` key present)**
-    * Tracks the `by_state` folder.
-    * Aggregated at the **state level**, not at the county level.
-    * Metadata filenames follow the format:
+* **Version `2.0` (County-Specific)**
+  * Supports **explicit county-level** metadata.
+  * Tracks the `by_state_and_county` folder.
+  * Supports **explicit county selection** and **wildcard fetch**.
+  * Metadata filenames follow the format:
 
-      ```
-      metadata_and_annual_results_aggregates/by_state/full/parquet/state={state}/{state}_{upgrade_str}_agg.parquet
-      ```
-
-  * **County-Level Metadata (Explicit `counties` key present)**
-    * Tracks the `by_state_and_county` folder.
-    * Supports **explicit county selection** and **fetching all counties dynamically**.
-    * Metadata filenames follow the format:
-
-      ```
-      metadata_and_annual_results_aggregates/by_state_and_county/full/parquet/state={state}/county={county}/{state}_{county}_{upgrade_str}_agg.parquet
-      ```
+    `by_state_and_county/full/parquet/state={state}/county={county}/{state}_{county}_{upgrade_str}.parquet`
 
   * **Wildcard County Fetch (`counties: ["*"]`)**
     * Dynamically retrieves all available counties from the S3 structure.
     * Uses `by_state_and_county` metadata paths.
+
+* **Version `3.0` (State-Level Aggregated)**
+  * Uses **aggregated** county-level metadata but stored and grouped **by state**.
+  * Tracks the `by_state` folder regardless of counties.
+  * Ignores the `counties` key unless needed for dynamic detection.
+  * Metadata filenames follow the format:
+
+    `by_state/state={state}/parquet/{state}_{upgrade_str}_agg.parquet`
 
 ---
 
@@ -75,36 +67,31 @@ This system supports two metadata versions:
       "account": "xxx",
       "deploymentEnv": "dev",
       "profile": "profile_name",
-      "regions": [
-        "us-west-2"
-      ],
+      "regions": ["us-west-2"],
       "glueJobTimeoutMinutes": 240,
       "requireApproval": "never"
     }
   ],
-
   "etl_config": {
+    "glue_job_timeout": 14400,
     "output_dir": "etl_output",
     "src_bucket": "oedi-data-lake",
-
     "data_partition_in_release": "timeseries_individual_buildings/by_state",
-    "base_partition": "oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock",
-
+    "base_partition": "nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock",
     "job_specific": [
       {
-        // Legacy mode (Version 1.0) - State-Level Only
-        "metadata_root_dir": "nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_1/metadata_and_annual_results/by_state/parquet",
-        "relative_metadata_prefix_type": "1.0",
+        // Version 1.0 - State-Level Legacy
+        "metadata_root_dir": "oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_1/metadata_and_annual_results/by_state/parquet",
+        "relative_metadata_prefix_type": "1",
         "release_name": "comstock_amy2018_release_1",
         "release_year": "2024",
         "state": "CA",
         "upgrades": ["0", "1"]
       },
       {
-        // Version 2.0 - State-Level Aggregated (Absence of "counties")
-        // **Tracks by_state folder**
-        "metadata_root_dir": "nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_2/metadata_and_annual_results",
-        "relative_metadata_prefix_type": "2.0",
+        // Version 2.0 - State-Level Aggregated (no counties)
+        "metadata_root_dir": "oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_2/metadata_and_annual_results_aggregates",
+        "relative_metadata_prefix_type": "2",
         "release_name": "comstock_amy2018_release_2",
         "release_year": "2024",
         "state": "TX",
@@ -112,9 +99,8 @@ This system supports two metadata versions:
       },
       {
         // Version 2.0 - County-Level with Explicit Counties
-        // **Tracks by_state_and_county folder**
-        "metadata_root_dir": "nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_2/metadata_and_annual_results",
-        "relative_metadata_prefix_type": "2.0",
+        "metadata_root_dir": "oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_2/metadata_and_annual_results",
+        "relative_metadata_prefix_type": "2",
         "release_name": "comstock_amy2018_release_2",
         "release_year": "2024",
         "state": "TX",
@@ -122,18 +108,25 @@ This system supports two metadata versions:
         "upgrades": ["0", "1"]
       },
       {
-        // Version 2.0 - Fetching All Counties
-        // **Tracks by_state_and_county folder**
-        "metadata_root_dir": "nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_2/metadata_and_annual_results",
-        "relative_metadata_prefix_type": "2.0",
+        // Version 2.0 - Fetch All Counties Dynamically
+        "metadata_root_dir": "oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_2/metadata_and_annual_results",
+        "relative_metadata_prefix_type": "2",
         "release_name": "comstock_amy2018_release_2",
         "release_year": "2024",
         "state": "NY",
-        "counties": ["*"], // Fetches all counties dynamically
+        "counties": ["*"],
+        "upgrades": ["0", "1"]
+      },
+      {
+        // Version 3.0 - State-Level Aggregated (metadata from aggregated county files)
+        "metadata_root_dir": "oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_2/metadata_and_annual_results_aggregates",
+        "relative_metadata_prefix_type": "3",
+        "release_name": "comstock_amy2018_release_2",
+        "release_year": "2024",
+        "state": "NY",
         "upgrades": ["0", "1"]
       }
     ],
-
     "settings": {
       "log_dir": "logs",
       "log_filename": "etl.log",
@@ -144,6 +137,7 @@ This system supports two metadata versions:
     }
   }
 }
+
 ```
 
 ---
@@ -228,8 +222,9 @@ Bucket structure:
    * The ETL should extract specific sets of `upgrades`, `states`, and optionally `counties`, and these values must be configurable.
 
 6. **Metadata**:
-   * The metadata, located in the `metadata_and_annual_results` directory, provides building-specific information.
-   * Metadata is stored in two formats depending on the version:
+   * The metadata, located in the `metadata_and_annual_results` or `metadata_and_annual_results_aggregates` directories, provides building-specific information.
+   * Metadata is stored in three formats depending on the version:
+
      * **Version 1.0 (Legacy, State-Level Only)**:
        * Metadata is partitioned under `by_state` and follows the format:
 
@@ -241,27 +236,37 @@ Bucket structure:
 
      * **Version 2.0 (Current, State and County Level)**:
        * **State-Level Metadata (No `counties` key present)**
-         * Metadata is stored in `by_state/full/parquet/`
+         * Stored in: `by_state/full/parquet/`
          * Example:
 
          ```md
-         state=CA/CA_baseline_agg.parquet
-         state=CA/CA_upgrade01_agg.parquet
+         state=CA/CA_baseline.parquet
+         state=CA/CA_upgrade01.parquet
          ```
 
        * **County-Level Metadata (Explicit `counties` key present)**
-         * Metadata is stored in `by_state_and_county/full/parquet/`
+         * Stored in: `by_state_and_county/full/parquet/`
          * Example:
 
          ```md
-         state=CA/county=G0600010/CA_G0600010_baseline_agg.parquet
-         state=CA/county=G0600020/CA_G0600020_upgrade01_agg.parquet
+         state=CA/county=G0600010/CA_G0600010_baseline.parquet
+         state=CA/county=G0600020/CA_G0600020_upgrade01.parquet
          ```
 
        * **Wildcard County Fetch (`counties: ["*"]`)**
          * All counties are dynamically retrieved and processed under `by_state_and_county`.
 
-   * The ETL automatically determines the correct metadata format and paths based on the version and configuration.
+     * **Version 3.0 (Aggregated County Metadata by State)**:
+       * Stores **aggregated** county-level metadata at the **state level**.
+       * Stored in: `by_state/parquet/`
+       * Example:
+
+       ```md
+       state=CA/CA_baseline_agg.parquet
+       state=CA/CA_upgrade01_agg.parquet
+       ```
+
+   * The ETL automatically determines the correct metadata version, structure, and fetch logic based on the configuration.
 
 *Note: You can configure multiple ETL jobs for different releases, states, or granularities (state vs. county) as needed.*
 
@@ -285,42 +290,88 @@ The ETL process is automated as part of a Glue Workflow, which orchestrates the 
 
 ### ETL Job Overview
 
-This is the core component of the system and is a python poetry package distributed as a whl.
+This ETL system is the core component of the pipeline and is packaged as a Python poetry-based wheel (`.whl`) for deployment and reuse.
 
-#### Key Operations in ETL
+---
 
-1. **Extraction**:
-    * The ETL begins by reading from the S3 bucket using filters based on parameters such as release year and state.
-    * Metadata is stored alongside the main table in the output directory. The is directly copied from the source to destination without any fetching as it does not need transformation. Joining the metadata during this phase may help for the project specific query performance, however it comes at huge storage cost and is avoided.In scenario where the joining can be found effective, this bypass should be modified. See [fetch](/etl/oedi_etl/fetch.py)
+### Legacy Architecture (Old System)
 
-2. **Transformation**:
-    * Data is aggregated from 15-minute intervals to 1-hour intervals.
-    * The ETL has a configurable flag to enable/disable date partitioning, improving performance for time-series queries.
-    * Other transformations such as filtering for only specified columns, rounding floating points, partitioning by date, etc. can be performed at this phase. See [transformation](/etl/oedi_etl/transform.py)
-    * NOTE:originally, a toggle partition into date was used but removed for simplicity. This transformation can be highly effective for intensive time series analysis.
+The previous system was built with **modular task-based orchestration**, where:
 
-3. **Load**:
-    * Transformed data is written to an S3 bucket shared with Athena.
-    * Output is preserved in Parquet format and compressed using Snappy for speed and performance.
-    * See [upload](/etl/oedi_etl/upload.py)
+* **Fetch**, **Transform**, and **Upload** were treated as **independent pipeline stages**.
+* These stages were connected via async worker pools with separate task queues for each stage.
+* Metadata was read and bypassed during the transformation stage.
+* The transformation logic included optional partitioning and allowed custom filtering, column selection, and rounding rules. The main crux of the architecture was to allow evolving the transformation phase.
+* Logging was centralized across processes and handled via an inter-process queue.
+* A monitor and crawler updater coordinated the final output summary and partition sync with Glue.
 
-#### Supporting systems
+---
 
-1. *[etl_job](/etl/oedi_etl/etl_job.py)*. Orchestrate the ETL (fetch, transform and upload) tasks along with the monitoring per every job.
-2. *[main](/etl/oedi_etl/main.py)*. Orchestrate multiple etl_jobs as well as update the latest partitions as s3 targets for the crawlers.
-3. *[log](/etl/oedi_etl/log.py)*. Allows logging across multiple workers (processes spread across CPUS) as well as async tasks.
-4. *[monitor](/etl/oedi_etl/monitor.py)*. Track incoming files, processed files, uploaded files, transformations, and discrepancies and logs summary of the ETL job. It also monitor tasks and handle idle timeout.
-"""
+### New Architecture (Current System)
 
-#### Key Design Considerations
+The system has been **fully redesigned** for better maintainability, flexibility, and alignment with evolving metadata formats (and possible future changes in metadata or data formats).
 
-Once Glue resources are provisioned, costs are incurred by the second, and the design focuses on balancing cost and performance as follows:
+Key changes and improvements:
 
-* **Async I/O** for S3 file listing, fetching, and uploading, ensuring these operations do not block other tasks.
-* **Separate worker pools** handle input (fetching) and output (uploading) I/O tasks independently for better parallelization.
-* **Multiprocessing for CPU-bound tasks** such as data transformation and aggregation to fully utilize available CPU cores.
-* **Queue-based task management** to decouple I/O and processing operations, allowing for efficient task distribution across workers.
-* **Parallel partition handling** where different state-upgrade combinations are processed concurrently for faster overall performance.
+#### Simplified ETL Execution Model
+
+* Each file (data or metadata) is processed independently by a **single worker** from start to finish (fetch → transform → upload).
+  * These workers run via **Python multiprocessing** to utilize available CPU cores with async I/O
+  * Task distribution is handled through a centralized queue that feeds complete ETL jobs to available workers.
+
+#### Decoupled Indexing
+
+* The **Indexer** is now a dedicated async component that handles:
+  * **Discovery of data and metadata files** via paginated S3 listings.
+  * **Metadata versioning logic**: Dynamically generates file paths based on config and version type (v1, v2, v3).
+  * Separation of metadata and data logic from ETL execution itself.
+  * Most importantly, it's easier now to handle future changes in metadata and data file structures.
+
+#### File-Type Awareness & Independent Tracking
+
+* **Metadata and data files are now treated and tracked separately** throughout the pipeline.
+  * Each file type has its own indexing, fetch, transform (if needed), upload, and logging lifecycle.
+  * This design allows **metadata schema/version changes** to be isolated to the indexer + configuration, without ETL code rewrites.
+
+#### Centralized Logging (via a logging queue)
+
+* Logging continues to use a dedicated process, fed by all workers via a shared log queue.
+* Ensures structured and complete capture of worker status, transformations, warnings, and errors.
+
+#### Improved Tracking & Summary
+
+* The **ETLTracker** now provides finer-grained tracking and discrepancy detection:
+  * Distinguishes between data and metadata transitions.
+  * Validates fetch, transform, and upload steps independently.
+  * Emits a final job summary with detailed insights into missing transitions or failed states.
+
+---
+
+### Module Breakdown (Unchanged from Summary)
+
+| Component       | Role                                                                 |
+|----------------|----------------------------------------------------------------------|
+| **`main.py`**   | Entry point. Orchestrates ETL jobs, manages configuration, invokes workers, updates Glue crawlers. |
+| **`manager.py`** | Manages lifecycle of worker processes, logging, and tracking. Ensures clean shutdown and coordination. |
+| **`worker.py`**  | Executes ETL pipeline: fetch → (transform/bypass) → upload. Tracks job states via queues. |
+| **`indexer.py`** | Indexes S3 data & metadata files using async paginated S3 listings. |
+| **`log.py`**     | Provides structured logging for local and AWS Glue environments. |
+| **`utils.py`**   | Utilities for S3 interaction, Glue crawler updates, job naming, shutdown, etc. |
+| **`tracker.py`** | Tracks ETL job state transitions and reports discrepancies in processing. |
+
+---
+
+### Design Principles
+
+* **Single-responsibility workers** handle one file end-to-end to reduce cross-cutting complexity.
+* **Async S3 operations** prevent event loop starvation during listing, fetches, or uploads.
+* **Multiprocessing** allows full CPU core utilization for Parquet transforms.
+* **Unified task queue** replaces stage-specific queues, simplifying orchestration.
+* **Dynamic metadata support** makes it easy to onboard format changes with minimal code change.
+
+---
+
+*This refactor was driven primarily by changing metadata formats and the need for better separation of responsibilities between indexing and processing logic. The result is a faster, more flexible, and easier-to-maintain system.*
 
 ### Crawlers: Schema Discovery
 
@@ -411,27 +462,30 @@ While the logging in AWS Glue is restricted to `INFO` level, local logging is mo
 Below is a sample summary printout from an actual test run. As you can see, `5790-1.parquet` was tracked as incoming but not uploaded. The `total_files_transferred_to_uploader` is 1 less than the `total_files_fetched`, which is captured by the `discrepancy_count`, and the file itself is logged in `discrepancies`. Such discrepancies can be investigated or manually addressed. In this case, it appears that the file may be corrupted and causing an error during transformation, which can be confirmed by reviewing the logs. The purpose here is not to troubleshoot, but to guide you that ETL processing failures can be identified and resolved.
 
 ```JSON
-{
-    "job_name": "comstock_amy2018_release_1_2024_AK",
-    "start_time": "2024-10-01 07:50:07",
-    "total_time_seconds": 180.03,
-    "end_time": "2024-10-01 07:53:07",
-    "total_files_listed": 504,
-    "total_files_fetched": 504,
-    "total_files_bypassed": 2,
-    "total_files_transferred_to_worker": 504,
-    "total_transformed_files": 502,
-    "total_files_transferred_to_uploader": 503,
-    "total_uploaded_files": 503,
-    "discrepancies_count": 1,
-    "discrepancies": [
-        {
-            "stage": "Listed but not Uploaded",
-            "files": [
-                "nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_1/timeseries_individual_buildings/by_state/upgrade=1/state=AK/5790-1.parquet"
-            ]
-        }
-    ]
+2025-03-19T20:25:12.349503 [info     ] {
+    "time_stat": {
+        "total_time_seconds": 564.64
+    },
+    "data_files_stats": {
+        "total_data_files_listed": 1126,
+        "total_data_files_uploaded": 1126,
+        "missing_data_fetches_count": 0,
+        "missing_data_transforms_count": 0,
+        "missing_data_uploads_count": 0,
+        "missing_data_fetches_files": {},
+        "missing_data_transforms_files": {},
+        "missing_data_uploads_files": {}
+    },
+    "metadata_files_stats": {
+        "total_metadata_files_listed": 2,
+        "total_metadata_files_uploaded": 2,
+        "missing_metadata_fetches_count": 0,
+        "missing_metadata_bypasses_count": 0,
+        "missing_metadata_uploads_count": 0,
+        "missing_metadata_fetches_files": {},
+        "missing_metadata_bypasses_files": {},
+        "missing_metadata_uploads_files": {}
+    }
 }
 ```
 
