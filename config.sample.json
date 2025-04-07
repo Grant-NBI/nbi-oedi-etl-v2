@@ -3,9 +3,9 @@
   "deploymentConfig": [
     {
       "appName": "NbiBuildingAnalytics",
-      "account": "653991346912",
+      "account": "__ACCOUNT_ID__",
       "deploymentEnv": "dev",
-      "profile": "awsist-dev",
+      "profile": "profile_name",
       "regions": ["us-west-2"],
       "requireApproval": "never",
       "glueJobTimeoutMinutes": 240
@@ -23,34 +23,25 @@
         "relative_metadata_prefix_type": "1",
         "release_name": "comstock_amy2018_release_1",
         "release_year": "2024",
-        "state": "AK",
+        "state": "CA",
         "upgrades": ["0"]
       },
       {
-        "metadata_root_dir": "oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_2/metadata_and_annual_results_aggregates",
-        "relative_metadata_prefix_type": "2",
-        "release_name": "comstock_amy2018_release_2",
-        "release_year": "2024",
-        "state": "AK",
-        "upgrades": ["1"]
-      },
-      {
-        "counties": ["G0200130", "G0200160", "G0200200"],
+        "counties": ["G0601150", "G0601130", "G0601110"],
         "metadata_root_dir": "oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_2/metadata_and_annual_results",
         "relative_metadata_prefix_type": "2",
         "release_name": "comstock_amy2018_release_2",
         "release_year": "2024",
-        "state": "AK",
-        "upgrades": ["1"]
+        "state": "CA",
+        "upgrades": ["0"]
       },
       {
-        "counties": ["*"],
         "metadata_root_dir": "oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_2/metadata_and_annual_results_aggregates",
         "relative_metadata_prefix_type": "3",
         "release_name": "comstock_amy2018_release_2",
         "release_year": "2024",
-        "state": "AK",
-        "upgrades": ["1"]
+        "state": "CA",
+        "upgrades": ["0", "1"]
       }
     ],
     "settings": {

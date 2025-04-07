@@ -21,34 +21,46 @@ The deployment process is automated using AWS CDK.
 
 ### **Versions and Metadata Handling**
 
-This system supports three metadata versions:
+This system supports three metadata versions based on how building-level results are structured and aggregated:
+
+---
 
 * **Version `1.0` (Legacy)**
-  * Uses **state-level** metadata exclusively.
-  * Metadata is stored under `by_state/state={state}/parquet`.
-  * Metadata filenames follow the format:
+  * Uses **state-level, unaggregated** metadata.
+  * One file per upgrade per state, containing all building results.
+  * Stored under: `by_state/state={state}/parquet/`
+  * Filename format:
 
     `{state}_{upgrade_str}_metadata_and_annual_results.parquet`
 
+---
+
 * **Version `2.0` (County-Specific)**
-  * Supports **explicit county-level** metadata.
-  * Tracks the `by_state_and_county` folder.
-  * Supports **explicit county selection** and **wildcard fetch**.
-  * Metadata filenames follow the format:
+  * Uses **per-county unaggregated** metadata files.
+  * Stored under: `by_state_and_county/full/parquet/state={state}/county={county}/`
+  * Filename format:
 
-    `by_state_and_county/full/parquet/state={state}/county={county}/{state}_{county}_{upgrade_str}.parquet`
+    `{state}_{county}_{upgrade_str}.parquet`
 
-  * **Wildcard County Fetch (`counties: ["*"]`)**
-    * Dynamically retrieves all available counties from the S3 structure.
-    * Uses `by_state_and_county` metadata paths.
+  * Supports:
+    * **Explicit county list** via `counties: ["G0601150", ...]`
+    * **Wildcard fetch** via `counties: ["*"]` to dynamically retrieve all counties in a given state.
 
-* **Version `3.0` (State-Level Aggregated)**
-  * Uses **aggregated** county-level metadata but stored and grouped **by state**.
-  * Tracks the `by_state` folder regardless of counties.
-  * Ignores the `counties` key unless needed for dynamic detection.
-  * Metadata filenames follow the format:
+---
 
-    `by_state/state={state}/parquet/{state}_{upgrade_str}_agg.parquet`
+* **Version `3.0` (State-Level Aggregated from Counties)**
+  * Contains **pre-aggregated results at the state level**, derived from county-level data.
+  * Not suitable for per-county analysis or wildcard county selection.
+  * Stored under: `by_state/state={state}/parquet/`
+  * Filename format:
+
+    `{state}_{upgrade_str}_agg.parquet`
+
+  * ⚠️ **Note**: `counties` key must not be set for this version. This version is meant for summarized views only and does not support county resolution or fetch logic.
+
+---
+
+The ETL automatically resolves file paths, formats, and metadata logic based on the `relative_metadata_prefix_type` and optional `counties` field provided in the configuration.
 
 ---
 
@@ -58,18 +70,20 @@ This system supports three metadata versions:
 * The directory structure is environment-based, ensuring that different environments (e.g., dev, prod) are kept separate.
 * All ETL output is written to a single table, ensuring that the querying process is streamlined. The table is automatically updated by the Glue Crawler after each ETL run.
 
+### **Sample Configuration**
+
 ```json
 {
   "monorepoRoot": ".",
   "deploymentConfig": [
     {
       "appName": "NbiBuildingAnalytics",
-      "account": "xxx",
+      "account": "653991346912",
       "deploymentEnv": "dev",
-      "profile": "profile_name",
+      "profile": "awsist-dev",
       "regions": ["us-west-2"],
-      "glueJobTimeoutMinutes": 240,
-      "requireApproval": "never"
+      "requireApproval": "never",
+      "glueJobTimeoutMinutes": 240
     }
   ],
   "etl_config": {
@@ -80,63 +94,52 @@ This system supports three metadata versions:
     "base_partition": "nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock",
     "job_specific": [
       {
-        // Version 1.0 - State-Level Legacy
-        "metadata_root_dir": "oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_1/metadata_and_annual_results/by_state/parquet",
+        "metadata_root_dir": "oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_1/metadata_and_annual_results",
         "relative_metadata_prefix_type": "1",
         "release_name": "comstock_amy2018_release_1",
         "release_year": "2024",
-        "state": "CA",
-        "upgrades": ["0", "1"]
+        "state": "AK",
+        "upgrades": ["0"]
       },
       {
-        // Version 2.0 - State-Level Aggregated (no counties)
-        "metadata_root_dir": "oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_2/metadata_and_annual_results_aggregates",
-        "relative_metadata_prefix_type": "2",
-        "release_name": "comstock_amy2018_release_2",
-        "release_year": "2024",
-        "state": "TX",
-        "upgrades": ["0", "1"]
-      },
-      {
-        // Version 2.0 - County-Level with Explicit Counties
+        "counties": ["G0200130", "G0200160", "G0200200"],
         "metadata_root_dir": "oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_2/metadata_and_annual_results",
         "relative_metadata_prefix_type": "2",
         "release_name": "comstock_amy2018_release_2",
         "release_year": "2024",
-        "state": "TX",
-        "counties": ["G4802010", "G4802590", "G4802700"],
-        "upgrades": ["0", "1"]
+        "state": "AK",
+        "upgrades": ["1"]
       },
+      //!BUG:  list_all_counties have some bug and this should not be used till it is fixed:instead enumerate all the counties you need or use the aggregates (type 3)
+      // {
+      //   "counties": ["*"],
+      //   "metadata_root_dir": "oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_2/metadata_and_annual_results",
+      //   "relative_metadata_prefix_type": "2",
+      //   "release_name": "comstock_amy2018_release_2",
+      //   "release_year": "2024",
+      //   "state": "AK",
+      //   "upgrades": ["1"]
+      // },
       {
-        // Version 2.0 - Fetch All Counties Dynamically
-        "metadata_root_dir": "oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_2/metadata_and_annual_results",
-        "relative_metadata_prefix_type": "2",
-        "release_name": "comstock_amy2018_release_2",
-        "release_year": "2024",
-        "state": "NY",
-        "counties": ["*"],
-        "upgrades": ["0", "1"]
-      },
-      {
-        // Version 3.0 - State-Level Aggregated (metadata from aggregated county files)
         "metadata_root_dir": "oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2024/comstock_amy2018_release_2/metadata_and_annual_results_aggregates",
         "relative_metadata_prefix_type": "3",
         "release_name": "comstock_amy2018_release_2",
         "release_year": "2024",
-        "state": "NY",
-        "upgrades": ["0", "1"]
+        "state": "AK",
+        "upgrades": ["1"]
       }
     ],
     "settings": {
       "log_dir": "logs",
       "log_filename": "etl.log",
-      "logging_level": "INFO",
+      "logging_level": "DEBUG",
       "idle_timeout_in_minutes": 5,
-      "listing_page_size": 500,
-      "max_listing_queue_size": 1000
+      "listing_page_size": 100,
+      "max_listing_queue_size": 500
     }
   }
 }
+
 
 ```
 

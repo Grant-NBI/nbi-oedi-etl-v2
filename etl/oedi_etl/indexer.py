@@ -64,9 +64,9 @@ def get_relative_metadata_s3_prefix(
     upgrade_str = "baseline" if str(upgrade) == "0" else f"upgrade{int(upgrade):02}"
 
     if relative_metadata_prefix_type == "1":
-        # Version 1: State-level metadata
+        # Version 1: State-level metadata (no support for counties)
         return [
-            f"{state}_{upgrade_str}_metadata_and_annual_results.parquet/by_state/state={state}/parquet"
+            f"by_state/state={state}/parquet/{state}_{upgrade_str}_metadata_and_annual_results.parquet"
         ]
         # version 2: County-level metadata
     elif relative_metadata_prefix_type == "2":
@@ -84,7 +84,7 @@ def get_relative_metadata_s3_prefix(
                 for county in counties
             ]
         else:
-            return [f"by_state/state={state}/parquet/{state}_{upgrade_str}_agg.parquet"]
+            return [f"by_state/full/parquet/state={state}/{state}_{upgrade_str}_agg.parquet"]
     else:
         raise ValueError(
             f"Invalid relative_metadata_prefix_type: {relative_metadata_prefix_type}"
@@ -114,6 +114,7 @@ async def list_metadata_files_in_s3(config, logger):
 
     # Determine counties
     counties = config.get("counties", [])
+    #! TODO: fix list all counties (It has some issues)
     if counties == ["*"]:
         counties = await list_all_counties(src_bucket, metadata_root_dir, state, logger)
 
