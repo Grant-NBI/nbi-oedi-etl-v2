@@ -166,12 +166,13 @@ class ETLWorker:
         if not file_stream:
             return
 
-        reader = pq.ParquetFile(io.BytesIO(file_stream.read()))
         _, object_key = parse_s3_url(s3_url)
+
         if bypass:
-            raw_metadata = file_stream.read()  # Directly transfer metadata
+            raw_metadata = io.BytesIO(file_stream.read())  # Ensure it's seekable
             self.tracking_queue.put((job_name, object_key, "metadata_bypassed"))
         else:
+            reader = pq.ParquetFile(io.BytesIO(file_stream.read()))
             table = reader.read()  # Read entire Parquet table
             transformed_table = self._transform_data(table)
 
@@ -189,7 +190,7 @@ class ETLWorker:
 
         # Write final transformed/bypassed data to a buffer
         if bypass:
-            etl_output = raw_metadata  # Direct transfer for metadata
+            etl_output = raw_metadata
         else:
             sink = io.BytesIO()
             pq.write_table(
@@ -209,6 +210,7 @@ class ETLWorker:
 
         await self._upload_to_s3(job_name, dest_bucket, dest_object_key, bypass, etl_output)
         self._log("info", f"Completed ETL job for {s3_url}. (bypass={bypass})")
+
 
     async def run(self):
         """Continuously processes tasks from the queue until receiving a poison pill,
