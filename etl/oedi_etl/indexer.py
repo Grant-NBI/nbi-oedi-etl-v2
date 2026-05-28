@@ -92,6 +92,10 @@ def get_relative_metadata_s3_prefix(
             ]
         else:
             return [f"by_state/full/parquet/state={state}/{state}_{upgrade_str}_agg.parquet"]
+
+        # version 4: ResStock state-level metadata (no _agg suffix, 2025+ indexed naming)
+    elif relative_metadata_prefix_type == "4":
+        return [f"by_state/full/parquet/state={state}/{state}_{upgrade_str}.parquet"]
     else:
         raise ValueError(
             f"Invalid relative_metadata_prefix_type: {relative_metadata_prefix_type}"

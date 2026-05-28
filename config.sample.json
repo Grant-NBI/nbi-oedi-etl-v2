@@ -42,6 +42,15 @@
         "release_year": "2024",
         "state": "CA",
         "upgrades": ["0", "1"]
+      },
+      {
+        "metadata_root_dir": "oedi-data-lake/nrel-pds-building-stock/end-use-load-profiles-for-us-building-stock/2025/resstock_amy2018_release_1/metadata_and_annual_results",
+        "metadata_naming_convention": "indexed",
+        "relative_metadata_prefix_type": "4",
+        "release_name": "resstock_amy2018_release_1",
+        "release_year": "2025",
+        "state": "CO",
+        "upgrades": ["0"]
       }
     ],
     "settings": {
