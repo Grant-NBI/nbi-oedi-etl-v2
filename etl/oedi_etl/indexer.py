@@ -46,22 +46,29 @@ async def list_files_for_partition(bucket, prefix, max_keys, logger=None):
 
 
 def get_relative_metadata_s3_prefix(
-    relative_metadata_prefix_type, state, upgrade, counties=None
+    relative_metadata_prefix_type, state, upgrade, counties=None, naming_convention=None
 ):
     """
     Generates metadata directory paths and filenames dynamically based on metadata version.
     Supports multiple counties.
 
     Args:
-        relative_metadata_prefix_type (str): Metadata version ("1.0" or "2.0").
+        relative_metadata_prefix_type (str): Metadata version ("1", "2", or "3").
         state (str): The state code (e.g., "AK").
         upgrade (int or str): The upgrade level.
         counties (list, optional): List of county codes (for county-level metadata).
+        naming_convention (str, optional): "indexed" for 2025+ releases that use
+            "upgradeN" (no zero-padding, no "baseline") for all upgrade filenames.
+            Defaults to legacy behaviour ("baseline" / zero-padded "upgradeNN").
 
     Returns:
         list[str]: A list of full metadata file paths relative to the metadata root.
     """
-    upgrade_str = "baseline" if str(upgrade) == "0" else f"upgrade{int(upgrade):02}"
+    # 2025+ releases (release_3+) dropped "baseline" and zero-padding: upgrade0, upgrade1, …
+    if naming_convention == "indexed":
+        upgrade_str = f"upgrade{int(upgrade)}"
+    else:
+        upgrade_str = "baseline" if str(upgrade) == "0" else f"upgrade{int(upgrade):02}"
 
     if relative_metadata_prefix_type == "1":
         # Version 1: State-level metadata (no support for counties)
@@ -118,6 +125,8 @@ async def list_metadata_files_in_s3(config, logger):
     if counties == ["*"]:
         counties = await list_all_counties(src_bucket, metadata_root_dir, state, logger)
 
+    naming_convention = config.get("metadata_naming_convention", None)
+
     # Get metadata file paths
     metadata_files = []
     metadata_partitions = []
@@ -125,7 +134,7 @@ async def list_metadata_files_in_s3(config, logger):
     for upgrade in upgrades:
         metadata_partitions.extend(
             get_relative_metadata_s3_prefix(
-                relative_metadata_prefix_type, state, upgrade, counties
+                relative_metadata_prefix_type, state, upgrade, counties, naming_convention
             )
         )
 

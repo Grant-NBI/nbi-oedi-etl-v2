@@ -30,7 +30,9 @@ async function deploy(options) {
       console.log(
         `Deploying to environment: ${options.deploymentEnv} with command ${cdkCmd} ${args.join(' ')}`
       );
-      const deployProcess = spawn(cdkCmd, args, {
+      // Quote the command path to handle spaces in directory names (Windows)
+      const quotedCmd = process.platform === 'win32' ? `"${cdkCmd}"` : cdkCmd;
+      const deployProcess = spawn(quotedCmd, args, {
         cwd: options.cwd,
         stdio: 'inherit',
         shell: true,

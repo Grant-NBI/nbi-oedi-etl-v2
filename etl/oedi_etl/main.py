@@ -89,6 +89,7 @@ async def etl_main(etl_config):
             "idle_timeout_in_minutes": idle_timeout_in_minutes,
             "listing_page_size": listing_page_size,
             "max_listing_queue_size": max_listing_queue_size,
+            "metadata_naming_convention": job_config.get("metadata_naming_convention", None),
             "metadata_root_dir": job_config["metadata_root_dir"],
             "relative_metadata_prefix_type": job_config[
                 "relative_metadata_prefix_type"
