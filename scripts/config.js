@@ -22,6 +22,10 @@ const getDeploymentEnvBasedOnGitBranch = () => {
     };
 }
 
+// Feature branches (e.g. ResStock.2025.r1, ComStock.2026.r3) won't match any
+// deploymentEnv by name — fall back to 'dev' so any branch that isn't 'prod'
+// deploys into the dev environment.
+const branch = getDeploymentEnvBasedOnGitBranch();
 const {
     appName,
     account,
@@ -30,7 +34,8 @@ const {
     regions,
     requireApproval,
     glueJobTimeoutMinutes
-} = config.deploymentConfig.find(config => config.deploymentEnv === getDeploymentEnvBasedOnGitBranch());
+} = config.deploymentConfig.find(c => c.deploymentEnv === branch)
+  ?? config.deploymentConfig.find(c => c.deploymentEnv === 'dev');
 
 
 // quick validations
